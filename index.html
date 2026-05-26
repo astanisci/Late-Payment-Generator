@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Late Payment Template Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f3f0; --surface: #ffffff; --surface2: #f9f8f6;
+    --border: #e2e0db; --border2: #cccac4;
+    --text: #1a1917; --muted: #6b6860; --faint: #9e9b95;
+    --accent: #1a4fbd; --accent-bg: #eef2fc; --accent-border: #b8c9f5;
+    --green: #1a6b3c; --green-bg: #edf7f2;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+    --radius: 6px; --radius-lg: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; font-family: var(--sans); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6; }
+
+  /* Two-column layout — fills iframe exactly, each col scrolls independently */
+  .app { display: grid; grid-template-columns: 1fr 1fr; height: 100%; overflow: hidden; }
+  .left-col { padding: 24px 24px 32px; overflow-y: auto; border-right: 1px solid var(--border); height: 100%; }
+  .right-col { background: var(--surface2); padding: 24px 24px 32px; overflow-y: auto; display: flex; flex-direction: column; border-left: 1px solid var(--border); height: 100%; }
+
+  /* Left — form */
+  .col-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin-bottom: 6px; }
+  .col-title { font-size: 20px; font-weight: 500; color: var(--text); letter-spacing: -.01em; margin-bottom: 24px; }
+  .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 12px; }
+  .form-section-label { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin-bottom: 12px; font-family: var(--mono); }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .form-field { display: flex; flex-direction: column; gap: 4px; }
+  .form-field label { font-size: 11px; color: var(--muted); font-weight: 500; }
+  .form-field input { font-size: 13px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font-family: var(--sans); outline: none; transition: border-color .1s, box-shadow .1s; }
+  .form-field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+  .sc-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+  .sc-card { padding: 11px 14px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: all .12s; background: var(--surface2); display: flex; align-items: flex-start; gap: 10px; }
+  .sc-card:hover { border-color: var(--border2); }
+  .sc-card.active { border-color: var(--accent); background: var(--accent-bg); }
+  .sc-radio { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--border2); flex-shrink: 0; margin-top: 2px; transition: all .1s; }
+  .sc-card.active .sc-radio { border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 3px var(--accent-bg); }
+  .sc-card-inner { flex: 1; }
+  .sc-card-tag { font-size: 10px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); margin-bottom: 2px; }
+  .sc-card.active .sc-card-tag { color: var(--accent); }
+  .sc-card-desc { font-size: 12px; color: var(--muted); line-height: 1.4; }
+  .sc-card.active .sc-card-desc { color: var(--accent); }
+  .toggle-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .toggle-lbl { font-size: 12px; color: var(--muted); flex: 1; }
+  .tog { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; flex-shrink: 0; }
+  .tog-opt { font-size: 12px; padding: 5px 13px; cursor: pointer; color: var(--muted); background: var(--surface2); transition: all .1s; font-family: var(--sans); border: none; }
+  .tog-opt.active { background: var(--accent); color: #fff; font-weight: 500; }
+
+  /* Right — preview */
+  .preview-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin-bottom: 6px; }
+  .preview-title { font-size: 20px; font-weight: 500; color: var(--text); letter-spacing: -.01em; margin-bottom: 24px; }
+  .preview-email { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 0; flex: 1; margin-bottom: 14px; overflow: hidden; }
+  .prev-section { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .prev-section:last-child { border-bottom: none; }
+  .prev-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .prev-row-label { font-family: var(--mono); font-size: 10px; color: var(--faint); text-transform: uppercase; letter-spacing: .06em; }
+  .prev-row-val { font-size: 13px; color: var(--text); line-height: 1.75; }
+  .prev-ph { font-family: var(--mono); font-size: 11px; background: var(--accent-bg); color: var(--accent); border-radius: 3px; padding: 1px 5px; font-style: italic; }
+  .prev-filled { color: var(--text); font-weight: 500; }
+  .prev-note-box { background: #fdf9ee; border-top: 1px solid #f0d48a; padding: 14px 20px; }
+  .prev-note-label { font-family: var(--mono); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: #8a7a40; margin-bottom: 5px; }
+  .prev-note-text { font-size: 12px; line-height: 1.7; color: #5a4a10; }
+  .btn-mini-copy { font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: var(--radius); border: 1px solid var(--border2); background: var(--surface); color: var(--muted); cursor: pointer; transition: all .12s; font-family: var(--sans); flex-shrink: 0; }
+  .btn-mini-copy:hover { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent); }
+  .btn-mini-copy.copied { background: var(--green-bg); border-color: #a8d8bb; color: var(--green); }
+  .btn-copy-email { width: 100%; padding: 13px; font-size: 13px; font-weight: 600; border: none; border-radius: var(--radius); background: var(--accent); color: #fff; cursor: pointer; font-family: var(--sans); letter-spacing: .02em; transition: all .12s; flex-shrink: 0; }
+  .btn-copy-email:hover { background: #1541a8; }
+  .btn-copy-email.copied { background: #1a6b3c; }
+
+  @media (max-width: 780px) {
+    html, body { overflow: auto; }
+    .app { grid-template-columns: 1fr; height: auto; overflow: visible; }
+    .left-col, .right-col { height: auto; overflow: visible; border: none; }
+    .right-col { border-top: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- LEFT: FORM -->
+  <div class="left-col">
+    <div class="col-eyebrow">Agent Tool — inContact DE</div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:24px;">
+      <div class="col-title" style="margin-bottom:0;">Late Payment Template Generator</div>
+      <button onclick="clearForm()" style="font-size:12px;font-weight:500;padding:5px 13px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--surface);color:var(--muted);cursor:pointer;font-family:var(--sans);transition:all .12s;" onmouseover="this.style.background='#fce8e6';this.style.color='#c0392b';this.style.borderColor='#f0b0a8';" onmouseout="this.style.background='var(--surface)';this.style.color='var(--muted)';this.style.borderColor='var(--border2)';">Clear form</button>
+    </div>
+
+    <div class="form-card">
+      <div class="form-section-label">01 — Client info</div>
+      <div class="form-grid">
+        <div class="form-field"><label>Client name</label><input id="cname" placeholder="Full name" oninput="render()"></div>
+        <div class="form-field"><label>Ref # (optional)</label><input id="cref" placeholder="—" oninput="render()"></div>
+        <div class="form-field"><label>Acct #</label><input id="cacct" placeholder="Account #" oninput="render()"></div>
+        <div class="form-field"><label>Last 4 of SSN</label><input id="cssn" placeholder="XXXX" maxlength="4" oninput="render()"></div>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <div class="form-section-label">02 — Payment details</div>
+      <div class="form-grid">
+        <div class="form-field"><label>Original payment due date</label><input type="date" id="pdue" oninput="render()"></div>
+        <div class="form-field"><label>Payment amount ($)</label><input id="pamt" placeholder="0.00" oninput="render()"></div>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <div class="form-section-label">03 — Situation</div>
+      <div class="sc-grid">
+        <div class="sc-card active" id="sc-a" onclick="setScenario('a')">
+          <div class="sc-radio"></div>
+          <div class="sc-card-inner">
+            <div class="sc-card-tag">Template A</div>
+            <div class="sc-card-desc">Payment sent / set up but not yet cleared</div>
+          </div>
+        </div>
+        <div class="sc-card" id="sc-b" onclick="setScenario('b')">
+          <div class="sc-radio"></div>
+          <div class="sc-card-inner">
+            <div class="sc-card-tag">Template B</div>
+            <div class="sc-card-desc">Payment was never sent or scheduled</div>
+          </div>
+        </div>
+        <div class="sc-card" id="sc-c" onclick="setScenario('c')">
+          <div class="sc-radio"></div>
+          <div class="sc-card-inner">
+            <div class="sc-card-tag">Template C</div>
+            <div class="sc-card-desc">Check mailed without prior approval</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-card" id="extra-a">
+      <div class="form-section-label">04 — Additional details</div>
+      <div class="form-grid" style="margin-bottom:14px;">
+        <div class="form-field"><label>Date payment was sent / set up</label><input type="date" id="psent" oninput="render()"></div>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-lbl">How was it submitted?</span>
+        <div class="tog">
+          <button class="tog-opt active" onclick="setTog('sendtype','sent',this)">Sent</button>
+          <button class="tog-opt" onclick="setTog('sendtype','set up',this)">Set up</button>
+        </div>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-lbl">Still pending because it hasn't been…</span>
+        <div class="tog">
+          <button class="tog-opt active" onclick="setTog('cleartype','processed',this)">Processed</button>
+          <button class="tog-opt" onclick="setTog('cleartype','cleared',this)">Cleared</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-card" id="extra-b" style="display:none;">
+      <div class="form-section-label">04 — Additional details</div>
+      <div class="form-grid">
+        <div class="form-field"><label>Date payment will be sent</label><input type="date" id="pnew" oninput="render()"></div>
+      </div>
+    </div>
+
+    <div class="form-card" id="extra-c" style="display:none;">
+      <div class="form-section-label">04 — Additional details</div>
+      <div class="form-grid">
+        <div class="form-field"><label>Date check was received</label><input type="date" id="precvd" oninput="render()"></div>
+        <div class="form-field"><label>Tracking number / carrier</label><input id="ptrack" placeholder="e.g. USPS 9400…" oninput="render()"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: PREVIEW -->
+  <div class="right-col">
+    <div class="preview-eyebrow">Live preview</div>
+    <div class="preview-title">Late Payment Template Generator</div>
+
+    <div class="preview-email">
+      <div class="prev-section">
+        <div class="prev-section-head">
+          <div class="prev-row-label">Subject line</div>
+          <button class="btn-mini-copy" onclick="copySubject(this)">Copy subject</button>
+        </div>
+        <div class="prev-row-val" id="prev-subj"></div>
+      </div>
+
+      <div class="prev-section">
+        <div class="prev-section-head">
+          <div class="prev-row-label">Client header</div>
+        </div>
+        <div class="prev-row-val" id="prev-client"></div>
+      </div>
+
+      <div id="prev-track-row" style="display:none;">
+        <div class="prev-section">
+          <div class="prev-section-head">
+            <div class="prev-row-label">Tracking</div>
+          </div>
+          <div class="prev-row-val" id="prev-track"></div>
+        </div>
+      </div>
+
+      <div class="prev-section">
+        <div class="prev-section-head">
+          <div class="prev-row-label">Email body</div>
+          <button class="btn-mini-copy" onclick="copyBody(this)">Copy body</button>
+        </div>
+        <div class="prev-row-val" id="prev-body" style="font-size:13px;line-height:1.8;"></div>
+      </div>
+
+      <div class="prev-note-box">
+        <div class="prev-note-label">Closing note — always included</div>
+        <div class="prev-note-text">Please note that any response to this email — written acknowledgement, questions, or further instruction — will serve as confirmation that the settlement is still active and that the payment will be accepted as stated, unless stated otherwise. Upon receipt of your response, we will proceed immediately with providing the payment information and/or issuing the payment.</div>
+      </div>
+    </div>
+
+    <button class="btn-copy-email" id="copy-btn" onclick="copyEmail()">Copy full email to clipboard</button>
+  </div>
+
+</div>
+
+<script>
+let scenario='a', sendtype='sent', cleartype='processed';
+
+function setScenario(s) {
+  scenario = s;
+  ['a','b','c'].forEach(x => {
+    document.getElementById('sc-'+x).classList.toggle('active', x===s);
+  });
+  document.getElementById('extra-a').style.display = s==='a' ? 'block' : 'none';
+  document.getElementById('extra-b').style.display = s==='b' ? 'block' : 'none';
+  document.getElementById('extra-c').style.display = s==='c' ? 'block' : 'none';
+  render();
+}
+
+function setTog(key, val, el) {
+  if(key==='sendtype') sendtype=val; else cleartype=val;
+  el.closest('.tog').querySelectorAll('.tog-opt').forEach(o => o.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+function fmtDate(str) {
+  if(!str) return null;
+  const [y,m,d] = str.split('-');
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return months[parseInt(m)-1]+' '+parseInt(d)+', '+y;
+}
+
+function fmtAmt(str) {
+  if(!str) return null;
+  const n = parseFloat(str);
+  if(isNaN(n)) return null;
+  return '$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function ph(val, label) {
+  return val
+    ? '<span class="prev-filled">'+val+'</span>'
+    : '<span class="prev-ph">'+label+'</span>';
+}
+
+function render() {
+  const cname = document.getElementById('cname').value.trim();
+  const cref  = document.getElementById('cref').value.trim();
+  const cacct = document.getElementById('cacct').value.trim();
+  const cssn  = document.getElementById('cssn').value.trim();
+  const pdue  = fmtDate(document.getElementById('pdue').value);
+  const pamt  = fmtAmt(document.getElementById('pamt').value);
+
+  document.getElementById('prev-subj').innerHTML =
+    'Settlement for '+ph(cname,'client_name')+(cref
+      ? ' / <span class="prev-filled">'+cref+'</span>'
+      : ' / <span class="prev-ph">reference_number</span>');
+
+  document.getElementById('prev-client').innerHTML =
+    ph(cname,'client_name')+' &nbsp; '
+    +ph(cref||null,'reference_number')+' &nbsp; '
+    +ph(cacct,'account_number')+' &nbsp; SSN: '
+    +ph(cssn?'…'+cssn:null,'last_4_ssn');
+
+  let body = '';
+  if(scenario==='a') {
+    const psent = fmtDate(document.getElementById('psent').value);
+    body = 'I am contacting you regarding the above-referenced client\'s settlement. The '
+      +ph(pdue,'payment_due_date')+' payment in the amount of '+ph(pamt,'payment_amount')
+      +' was '+sendtype+' on '+ph(psent,'submission_date')+' but has not yet been '+cleartype
+      +'. We are requesting confirmation that the settlement remains active and that the '
+      +ph(pamt,'payment_amount')+' payment has been received, or advise if the payment information needs to be resent.';
+    document.getElementById('prev-track-row').style.display='none';
+  } else if(scenario==='b') {
+    const pnew = fmtDate(document.getElementById('pnew').value);
+    body = 'I am contacting you regarding the above-referenced client\'s settlement. Unfortunately, the '
+      +ph(pdue,'payment_due_date')+' payment in the amount of '+ph(pamt,'payment_amount')
+      +' was not scheduled or sent as required. We are requesting confirmation that the settlement remains active and that the '
+      +ph(pamt,'payment_amount')+' payment will be accepted on '+ph(pnew,'new_payment_date')+'.';
+    document.getElementById('prev-track-row').style.display='none';
+  } else {
+    const precvd = fmtDate(document.getElementById('precvd').value);
+    const ptrack = document.getElementById('ptrack').value.trim();
+    body = 'I am contacting you regarding the above-referenced client\'s settlement. Unfortunately, the '
+      +ph(pdue,'payment_due_date')+' payment in the amount of '+ph(pamt,'payment_amount')
+      +' was not scheduled or sent through the standard process; however, a check in the amount of '
+      +ph(pamt,'payment_amount')+' was mailed and received on '+ph(precvd,'date_received')
+      +'. We are requesting confirmation that the settlement remains active and that the payment received on that date will be applied toward the active settlement.';
+    document.getElementById('prev-track').innerHTML = 'Tracking: '+ph(ptrack||null,'tracking_info');
+    document.getElementById('prev-track-row').style.display='block';
+  }
+  document.getElementById('prev-body').innerHTML = body;
+}
+
+const NOTE = 'Please note that any response to this email — written acknowledgement, questions, or further instruction — will serve as confirmation that the settlement is still active and that the payment will be accepted as stated, unless stated otherwise. Upon receipt of your response, we will proceed immediately with providing the payment information and/or issuing the payment.';
+
+function clearForm() {
+  ['cname','cref','cacct','cssn','pamt','psent','pnew','precvd','ptrack'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value = '';
+  });
+  ['pdue'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  sendtype = 'sent'; cleartype = 'processed';
+  document.querySelectorAll('.tog').forEach(tog => {
+    tog.querySelectorAll('.tog-opt').forEach((opt, i) => opt.classList.toggle('active', i===0));
+  });
+  setScenario('a');
+}
+
+function copySubject(btn) {
+  const text = document.getElementById('prev-subj').innerText;
+  navigator.clipboard.writeText(text.trim()).then(() => {
+    btn.textContent = 'Copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy subject'; btn.classList.remove('copied'); }, 2200);
+  });
+}
+
+function copyBody(btn) {
+  const cli   = document.getElementById('prev-client').innerText;
+  const track = document.getElementById('prev-track-row').style.display !== 'none'
+    ? '\n' + document.getElementById('prev-track').innerText : '';
+  const body  = document.getElementById('prev-body').innerText;
+  const full  = cli + track + '\n\n' + body + ' ' + NOTE;
+  navigator.clipboard.writeText(full.trim()).then(() => {
+    btn.textContent = 'Copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy body'; btn.classList.remove('copied'); }, 2200);
+  });
+}
+
+function copyEmail() {
+  const subj  = document.getElementById('prev-subj').innerText;
+  const cli   = document.getElementById('prev-client').innerText;
+  const track = document.getElementById('prev-track-row').style.display !== 'none'
+    ? '\n' + document.getElementById('prev-track').innerText : '';
+  const body  = document.getElementById('prev-body').innerText;
+  const full  = 'Subject: ' + subj + '\n\n' + cli + track + '\n\n' + body + ' ' + NOTE;
+  navigator.clipboard.writeText(full).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = 'Copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy full email to clipboard'; btn.classList.remove('copied'); }, 2500);
+  });
+}
+
+render();
+</script>
+</body>
+</html>
