@@ -64,7 +64,7 @@
   .prev-filled { color: var(--text); font-weight: 500; }
   .prev-note-box { background: #fdf9ee; border-top: 1px solid #f0d48a; padding: 14px 20px; }
   .prev-note-label { font-family: var(--mono); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: #8a7a40; margin-bottom: 5px; }
-  .prev-note-text { font-size: 12px; line-height: 1.7; color: #5a4a10; }
+  .prev-note-text { font-size: 12px; line-height: 1.7; color: #5a4a10; font-style: italic; }
   .btn-mini-copy { font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: var(--radius); border: 1px solid var(--border2); background: var(--surface); color: var(--muted); cursor: pointer; transition: all .12s; font-family: var(--sans); flex-shrink: 0; }
   .btn-mini-copy:hover { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent); }
   .btn-mini-copy.copied { background: var(--green-bg); border-color: #a8d8bb; color: var(--green); }
@@ -213,7 +213,7 @@
 
       <div class="prev-note-box">
         <div class="prev-note-label">Closing note — always included</div>
-        <div class="prev-note-text">Please note that any response to this email — written acknowledgement, questions, or further instruction — will serve as confirmation that the settlement is still active and that the payment will be accepted as stated, unless stated otherwise. Upon receipt of your response, we will proceed immediately with providing the payment information and/or issuing the payment.</div>
+        <div class="prev-note-text">Please note that unless your response explicitly states that the settlement is no longer active or that the payment will not be accepted, any reply to this email — including written acknowledgement, questions, or further instruction — will be treated as confirmation that the settlement remains active and the payment will be accepted as stated. Upon receipt of your response, we will proceed immediately with providing the payment information and/or issuing the payment.</div>
       </div>
     </div>
 
@@ -277,10 +277,12 @@ function render() {
       : ' / <span class="prev-ph">reference_number</span>');
 
   document.getElementById('prev-client').innerHTML =
-    ph(cname,'client_name')+' &nbsp; '
-    +ph(cref||null,'reference_number')+' &nbsp; '
-    +ph(cacct,'account_number')+' &nbsp; SSN: '
-    +ph(cssn?'…'+cssn:null,'last_4_ssn');
+    '<div style="display:flex;flex-direction:column;gap:4px;">'
+    +'<div><span style="font-family:var(--mono);font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-right:8px;">Client Name:</span>'+ph(cname,'client_name')+'</div>'
+    +'<div><span style="font-family:var(--mono);font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-right:8px;">Reference Number:</span>'+ph(cref||null,'reference_number')+'</div>'
+    +'<div><span style="font-family:var(--mono);font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-right:8px;">Account Number:</span>'+ph(cacct,'account_number')+'</div>'
+    +'<div><span style="font-family:var(--mono);font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-right:8px;">SSN:</span>'+ph(cssn?'…'+cssn:null,'last_4_ssn')+'</div>'
+    +'</div>';
 
   let body = '';
   if(scenario==='a') {
@@ -312,7 +314,7 @@ function render() {
   document.getElementById('prev-body').innerHTML = body;
 }
 
-const NOTE = 'Please note that any response to this email — written acknowledgement, questions, or further instruction — will serve as confirmation that the settlement is still active and that the payment will be accepted as stated, unless stated otherwise. Upon receipt of your response, we will proceed immediately with providing the payment information and/or issuing the payment.';
+const NOTE = 'Please note that unless your response explicitly states that the settlement is no longer active or that the payment will not be accepted, any reply to this email — including written acknowledgement, questions, or further instruction — will be treated as confirmation that the settlement remains active and the payment will be accepted as stated. Upon receipt of your response, we will proceed immediately with providing the payment information and/or issuing the payment.';
 
 function clearForm() {
   ['cname','cref','cacct','cssn','pamt','psent','pnew','precvd','ptrack'].forEach(id => {
@@ -334,13 +336,30 @@ function copySubject(btn) {
   });
 }
 
+function buildClientText() {
+  const cname = document.getElementById('cname').value.trim();
+  const cref  = document.getElementById('cref').value.trim();
+  const cacct = document.getElementById('cacct').value.trim();
+  const cssn  = document.getElementById('cssn').value.trim();
+  return 'Client Name: ' + (cname || '[client_name]')
+    + '\nReference Number: ' + (cref  || '[reference_number]')
+    + '\nAccount Number: '   + (cacct || '[account_number]')
+    + '\nSSN: '              + (cssn  ? '…'+cssn : '[last_4_ssn]');
+}
+
 function copyBody(btn) {
-  const cli   = document.getElementById('prev-client').innerText;
+  const cli   = buildClientText();
   const track = document.getElementById('prev-track-row').style.display !== 'none'
     ? '\n' + document.getElementById('prev-track').innerText : '';
   const body  = document.getElementById('prev-body').innerText;
-  const full  = cli + track + '\n\n' + body + ' ' + NOTE;
-  navigator.clipboard.writeText(full.trim()).then(() => {
+
+  const plain = cli + track + '\n\n' + body + '\n\n' + NOTE;
+  const html  = '<div style="font-family:sans-serif;font-size:14px;">'
+    + cli.replace(/\n/g, '<br>') + (track ? '<br>' + track : '')
+    + '<br><br>' + body
+    + '<br><br><em>' + NOTE + '</em></div>';
+
+  writeClipboard(plain, html).then(() => {
     btn.textContent = 'Copied!'; btn.classList.add('copied');
     setTimeout(() => { btn.textContent = 'Copy body'; btn.classList.remove('copied'); }, 2200);
   });
@@ -348,16 +367,35 @@ function copyBody(btn) {
 
 function copyEmail() {
   const subj  = document.getElementById('prev-subj').innerText;
-  const cli   = document.getElementById('prev-client').innerText;
+  const cli   = buildClientText();
   const track = document.getElementById('prev-track-row').style.display !== 'none'
     ? '\n' + document.getElementById('prev-track').innerText : '';
   const body  = document.getElementById('prev-body').innerText;
-  const full  = 'Subject: ' + subj + '\n\n' + cli + track + '\n\n' + body + ' ' + NOTE;
-  navigator.clipboard.writeText(full).then(() => {
+
+  const plain = 'Subject: ' + subj + '\n\n' + cli + track + '\n\n' + body + '\n\n' + NOTE;
+  const html  = '<div style="font-family:sans-serif;font-size:14px;">'
+    + '<strong>Subject:</strong> ' + subj
+    + '<br><br>' + cli.replace(/\n/g, '<br>') + (track ? '<br>' + track : '')
+    + '<br><br>' + body
+    + '<br><br><em>' + NOTE + '</em></div>';
+
+  writeClipboard(plain, html).then(() => {
     const btn = document.getElementById('copy-btn');
     btn.textContent = 'Copied!'; btn.classList.add('copied');
     setTimeout(() => { btn.textContent = 'Copy full email to clipboard'; btn.classList.remove('copied'); }, 2500);
   });
+}
+
+function writeClipboard(plain, html) {
+  if (navigator.clipboard && window.ClipboardItem) {
+    const item = new ClipboardItem({
+      'text/plain': new Blob([plain], { type: 'text/plain' }),
+      'text/html':  new Blob([html],  { type: 'text/html' })
+    });
+    return navigator.clipboard.write([item]);
+  } else {
+    return navigator.clipboard.writeText(plain);
+  }
 }
 
 render();
